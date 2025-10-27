@@ -1,2 +1,3 @@
-# labl
-CLI tool designed for seamless management of GitHub repository labels.
+# Labl
+
+A CLI tool for managing GitHub repository labels with full CRUD operations.
