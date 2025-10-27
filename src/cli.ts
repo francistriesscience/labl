@@ -1,5 +1,6 @@
 import type { CLIOptions } from './types.js';
 import { GitHubLabelsAPI } from './api.js';
+import { GITHUB_TOKEN } from '../config/constants.js';
 
 export function parseArgs(args: string[]): { command: string; options: CLIOptions } {
   if (args.length === 0 || !args[0]) {
@@ -27,10 +28,21 @@ export function parseArgs(args: string[]): { command: string; options: CLIOption
 }
 
 export async function runCommand(command: string, options: CLIOptions): Promise<void> {
-  const token = process.env.GITHUB_TOKEN || options.token;
+  const token = GITHUB_TOKEN || options.token;
   if (!token) {
     console.error('Error: GitHub token is required. Set GITHUB_TOKEN environment variable or use --token option.');
     process.exit(1);
+  }
+
+  const api = new GitHubLabelsAPI(token);
+
+  if (command === 'copy' || command === 'export') {
+    if (command === 'copy') {
+      await handleCopy(api, options);
+    } else {
+      await handleExport(api, options);
+    }
+    return;
   }
 
   const owner = options.owner;
@@ -40,8 +52,6 @@ export async function runCommand(command: string, options: CLIOptions): Promise<
     console.error('Error: --owner and --repo are required.');
     process.exit(1);
   }
-
-  const api = new GitHubLabelsAPI(token);
 
   switch (command) {
     case 'list':
@@ -134,22 +144,132 @@ async function handleDelete(api: GitHubLabelsAPI, owner: string, repo: string, o
   console.log(`Deleted label: ${name}`);
 }
 
+async function handleCopy(api: GitHubLabelsAPI, options: CLIOptions) {
+  // Allow using --owner/--repo as source for backward compatibility
+  const fromOwner = options.fromOwner || options.owner;
+  const fromRepo = options.fromRepo || options.repo;
+  const toOwner = options.toOwner;
+  const toRepo = options.toRepo;
+
+  if (!fromOwner || !fromRepo) {
+    console.error('Error: Source repository required. Use --from-owner and --from-repo, or --owner and --repo for source.');
+    process.exit(1);
+  }
+
+  if (!toOwner || !toRepo) {
+    console.error('Error: Destination repository required. Use --to-owner and --to-repo.');
+    process.exit(1);
+  }
+
+  console.log(`Copying labels from ${fromOwner}/${fromRepo} to ${toOwner}/${toRepo}...`);
+
+  try {
+    // Get all labels from source repository
+    const sourceLabels = await api.listLabels(fromOwner, fromRepo);
+    console.log(`Found ${sourceLabels.length} labels in source repository.`);
+
+    // Filter out default GitHub labels (we only want custom ones)
+    const customLabels = sourceLabels.filter(label => !label.default);
+    console.log(`Copying ${customLabels.length} custom labels...`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const label of customLabels) {
+      try {
+        await api.createLabel(toOwner, toRepo, {
+          name: label.name,
+          color: label.color,
+          description: label.description
+        });
+        console.log(`✓ Copied label: ${label.name}`);
+        successCount++;
+      } catch (error) {
+        console.error(`✗ Failed to copy label "${label.name}": ${error instanceof Error ? error.message : String(error)}`);
+        errorCount++;
+      }
+    }
+
+    console.log(`\nCopy completed: ${successCount} successful, ${errorCount} failed.`);
+
+  } catch (error) {
+    console.error('Error copying labels:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
+async function handleExport(api: GitHubLabelsAPI, options: CLIOptions) {
+  const owner = options.owner;
+  const repo = options.repo;
+
+  if (!owner || !repo) {
+    console.error('Error: --owner and --repo are required for export command.');
+    process.exit(1);
+  }
+
+  console.log(`Exporting labels from ${owner}/${repo}...`);
+
+  try {
+    // Get all labels from repository
+    const labels = await api.listLabels(owner, repo);
+    console.log(`Found ${labels.length} labels in repository.`);
+
+    // Prepare export data
+    const exportData = {
+      repository: `${owner}/${repo}`,
+      exportedAt: new Date().toISOString(),
+      labels: labels.map(label => ({
+        name: label.name,
+        color: label.color,
+        description: label.description,
+        default: label.default
+      }))
+    };
+
+    // Create .json directory if it doesn't exist
+    const jsonDir = '.json';
+    try {
+      await Bun.write(`${jsonDir}/.gitkeep`, '');
+    } catch {
+      // Directory might already exist
+    }
+
+    // Write JSON file
+    const filename = `${repo}.json`;
+    const filepath = `${jsonDir}/${filename}`;
+    await Bun.write(filepath, JSON.stringify(exportData, null, 2));
+
+    console.log(`✓ Exported ${labels.length} labels to ${filepath}`);
+    console.log(`✓ File saved: ${filepath}`);
+
+  } catch (error) {
+    console.error('Error exporting labels:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 export function printUsage() {
   console.log(`
 GitHub Labels CLI
 
-Usage: labl <command> --owner <owner> --repo <repo> [options]
+Usage: labl <command> [options]
 
 Commands:
-  list                    List all labels in the repository
-  create --name <name> --color <color> [--description <desc>]  Create a new label
-  get --name <name>       Get details of a specific label
-  update --name <name> [--new-name <new>] [--color <color>] [--description <desc>]  Update a label
-  delete --name <name>    Delete a label
+  list --owner <owner> --repo <repo>                                    List all labels in the repository
+  create --owner <owner> --repo <repo> --name <name> --color <color> [--description <desc>]  Create a new label
+  get --owner <owner> --repo <repo> --name <name>                      Get details of a specific label
+  update --owner <owner> --repo <repo> --name <name> [--new-name <new>] [--color <color>] [--description <desc>]  Update a label
+  delete --owner <owner> --repo <repo> --name <name>                   Delete a label
+  copy --from-owner <from-owner> --from-repo <from-repo> --to-owner <to-owner> --to-repo <to-repo>  Copy labels from one repo to another
+  export --owner <owner> --repo <repo>                                Export all labels to JSON file
 
 Options:
-  --owner <owner>         Repository owner (required)
-  --repo <repo>           Repository name (required)
+  --owner <owner>         Repository owner
+  --repo <repo>           Repository name
+  --from-owner <owner>    Source repository owner (for copy command)
+  --from-repo <repo>      Source repository name (for copy command)
+  --to-owner <owner>      Destination repository owner (for copy command)
+  --to-repo <repo>        Destination repository name (for copy command)
   --token <token>         GitHub token (or set GITHUB_TOKEN env var)
   --name <name>           Label name
   --new-name <new>        New label name (for update)
@@ -161,5 +281,7 @@ Examples:
   labl create --owner myorg --repo myrepo --name "bug" --color "ff0000" --description "Bug reports"
   labl update --owner myorg --repo myrepo --name "bug" --color "00ff00"
   labl delete --owner myorg --repo myrepo --name "old-label"
+  labl copy --from-owner sourceorg --from-repo sourcerepo --to-owner destorg --to-repo destrepo
+  labl export --owner myorg --repo myrepo
 `);
 }

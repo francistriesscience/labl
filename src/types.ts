@@ -28,4 +28,8 @@ export interface CLIOptions {
   newName?: string;
   color?: string;
   description?: string;
+  fromOwner?: string;
+  fromRepo?: string;
+  toOwner?: string;
+  toRepo?: string;
 }
