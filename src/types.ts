@@ -32,4 +32,5 @@ export interface CLIOptions {
   fromRepo?: string
   toOwner?: string
   toRepo?: string
+  file?: string
 }
