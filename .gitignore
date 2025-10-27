@@ -1,28 +1,32 @@
-# dependencies (bun install)
+# JSON files for exports and imports
+.json/exports/*.json
+.json/imports/*.json
+
+# Dependencies
 node_modules
 
-# output
+# Output directories
 out
 dist
 *.tgz
 
-# code coverage
+# Code coverage
 coverage
 *.lcov
 
-# logs
+# Logs and temp files
 logs
 _.log
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
-# dotenv environment variable files
+# Dotenv environment variable files
 .env
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
 
-# caches
+# Caches
 .eslintcache
 .cache
 *.tsbuildinfo

@@ -3,6 +3,8 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "editor.formatOnType": true,
+  "editor.tabSize": 2,
+  "editor.wordWrap": "on",
   "prettier.configPath": ".prettierrc",
   "prettier.ignorePath": ".prettierignore",
   "prettier.requireConfig": true,
