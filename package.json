@@ -1,0 +1,19 @@
+{
+  "name": "labl",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "labl": "index.ts"
+  },
+  "scripts": {
+    "start": "bun run index.ts",
+    "check": "bun run --check index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
