@@ -9,6 +9,7 @@ import {
   handleGet,
   handleUpdate,
   handleDelete,
+  handleClear,
 } from "./actions"
 
 export function parseArgs(args: string[]): { command: string; options: CLIOptions } {
@@ -47,11 +48,13 @@ export async function runCommand(command: string, options: CLIOptions): Promise<
 
   const api = new GitHubLabelsAPI(token)
 
-  if (command === "copy" || command === "export") {
+  if (command === "copy" || command === "export" || command === "clear") {
     if (command === "copy") {
       await handleCopy(api, options)
-    } else {
+    } else if (command === "export") {
       await handleExport(api, options)
+    } else {
+      await handleClear(api, options)
     }
     return
   }
@@ -101,6 +104,7 @@ Commands:
   delete --owner <owner> --repo <repo> --name <name>                   Delete a label
   copy --from-owner <from-owner> --from-repo <from-repo> --to-owner <to-owner> --to-repo <to-repo>  Copy labels from one repo to another
   export --owner <owner> --repo <repo>                                Export all labels to JSON file
+  clear --owner <owner> --repo <repo>                                 Delete all labels from repository
 
 Options:
   --owner <owner>         Repository owner
@@ -122,5 +126,6 @@ Examples:
   labl delete --owner myorg --repo myrepo --name "old-label"
   labl copy --from-owner sourceorg --from-repo sourcerepo --to-owner destorg --to-repo destrepo
   labl export --owner myorg --repo myrepo
+  labl clear --owner myorg --repo myrepo
 `)
 }
