@@ -10,6 +10,7 @@ import {
   handleUpdate,
   handleDelete,
   handleClear,
+  handleImport,
 } from "./actions"
 
 export function parseArgs(args: string[]): { command: string; options: CLIOptions } {
@@ -48,13 +49,15 @@ export async function runCommand(command: string, options: CLIOptions): Promise<
 
   const api = new GitHubLabelsAPI(token)
 
-  if (command === "copy" || command === "export" || command === "clear") {
+  if (command === "copy" || command === "export" || command === "clear" || command === "import") {
     if (command === "copy") {
       await handleCopy(api, options)
     } else if (command === "export") {
       await handleExport(api, options)
-    } else {
+    } else if (command === "clear") {
       await handleClear(api, options)
+    } else {
+      await handleImport(api, options)
     }
     return
   }
@@ -105,6 +108,7 @@ Commands:
   copy --from-owner <from-owner> --from-repo <from-repo> --to-owner <to-owner> --to-repo <to-repo>  Copy labels from one repo to another
   export --owner <owner> --repo <repo>                                Export all labels to JSON file
   clear --owner <owner> --repo <repo>                                 Delete all labels from repository
+  import --owner <owner> --repo <repo> --file <filename>              Import labels from JSON file
 
 Options:
   --owner <owner>         Repository owner
@@ -113,6 +117,7 @@ Options:
   --from-repo <repo>      Source repository name (for copy command)
   --to-owner <owner>      Destination repository owner (for copy command)
   --to-repo <repo>        Destination repository name (for copy command)
+  --file <filename>       JSON file to import from (for import command)
   --token <token>         GitHub token (or set GITHUB_TOKEN env var)
   --name <name>           Label name
   --new-name <new>        New label name (for update)
@@ -127,5 +132,6 @@ Examples:
   labl copy --from-owner sourceorg --from-repo sourcerepo --to-owner destorg --to-repo destrepo
   labl export --owner myorg --repo myrepo
   labl clear --owner myorg --repo myrepo
+  labl import --owner myorg --repo myrepo --file example.json
 `)
 }
