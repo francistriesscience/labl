@@ -226,15 +226,12 @@ async function handleExport(api: GitHubLabelsAPI, options: CLIOptions) {
       }))
     };
 
-    // Create .json directory if it doesn't exist
-    const jsonDir = '.json';
+    // Create .json/exports directory if it doesn't exist
+    const jsonDir = '.json/exports';
     try {
-      await Bun.write(`${jsonDir}/.gitkeep`, '');
-    } catch {
-      // Directory might already exist
-    }
+      await Bun.write(`${jsonDir}`, '');
+    } catch {}
 
-    // Write JSON file
     const filename = `${repo}.json`;
     const filepath = `${jsonDir}/${filename}`;
     await Bun.write(filepath, JSON.stringify(exportData, null, 2));
